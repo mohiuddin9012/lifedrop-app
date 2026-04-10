@@ -1,0 +1,79 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the LifeDrop application, can be a donor or a requester.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "name": { "type": "string" },
+        "mobile": { "type": "string" },
+        "dob": { "type": "string" },
+        "bloodGroup": { "type": "string" },
+        "district": { "type": "string" },
+        "upazila": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "status": { "type": "string", "enum": ["Available", "Busy"] },
+        "moodStatus": { "type": "string", "enum": ["Ready", "Busy", "Away"] },
+        "totalDonations": { "type": "number" },
+        "livesSaved": { "type": "number" },
+        "lastDonationDate": { "type": "string" },
+        "badge": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "donationHistory": { "type": "array", "items": { "type": "object" } },
+        "favorites": { "type": "array", "items": { "type": "string" } },
+        "heroMode": { "type": "boolean" }
+      },
+      "required": ["uid", "name", "mobile", "bloodGroup", "district", "upazila"]
+    },
+    "BloodRequest": {
+      "title": "BloodRequest",
+      "description": "A request for blood donation.",
+      "type": "object",
+      "properties": {
+        "patientName": { "type": "string" },
+        "bloodGroup": { "type": "string" },
+        "units": { "type": "number" },
+        "hospital": { "type": "string" },
+        "district": { "type": "string" },
+        "upazila": { "type": "string" },
+        "phone": { "type": "string" },
+        "time": { "type": "string" },
+        "reason": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pending", "Approved", "Completed", "Cancelled"] },
+        "urgency": { "type": "string", "enum": ["Critical", "Serious", "Planned"] },
+        "requesterId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["patientName", "bloodGroup", "units", "hospital", "district", "upazila", "phone", "time", "requesterId", "urgency"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A notification for a user.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["emergency", "nearby", "system"] },
+        "time": { "type": "string" },
+        "read": { "type": "boolean" },
+        "userId": { "type": "string" }
+      },
+      "required": ["title", "message", "type", "time", "read", "userId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/requests/{requestId}": {
+      "schema": "BloodRequest",
+      "description": "Blood donation requests"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User notifications"
+    }
+  }
+}

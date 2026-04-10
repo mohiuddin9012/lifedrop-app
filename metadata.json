@@ -1,0 +1,5 @@
+{
+  "name": "LifeDrop - Blood Donation Platform",
+  "description": "A modern, professional blood donation platform for finding donors and requesting emergency blood.",
+  "requestFramePermissions": ["geolocation"]
+}

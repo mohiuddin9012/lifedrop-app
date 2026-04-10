@@ -1,0 +1,131 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (Auth UID)
+    // Fields:
+    //   - uid: string (required) - Firebase Auth UID
+    //   - name: string (required)
+    //   - mobile: string (required)
+    //   - dob: string (optional)
+    //   - bloodGroup: string (required)
+    //   - district: string (required)
+    //   - upazila: string (required)
+    //   - role: string (required, 'user' or 'admin')
+    //   - status: string (required, 'Available' or 'Busy')
+    //   - totalDonations: number (optional)
+    //   - lastDonationDate: string (optional)
+    //   - badge: string (optional)
+    //   - createdAt: string (required, ISO 8601)
+    //
+    // Collection: requests
+    // Document ID: auto-generated
+    // Fields:
+    //   - patientName: string (required)
+    //   - bloodGroup: string (required)
+    //   - units: number (required)
+    //   - hospital: string (required)
+    //   - district: string (required)
+    //   - upazila: string (required)
+    //   - phone: string (required)
+    //   - time: string (required)
+    //   - reason: string (optional)
+    //   - status: string (required, 'Pending', 'Approved', 'Completed', 'Cancelled')
+    //   - requesterId: string (required) - UID of the requester
+    //   - createdAt: string (required, ISO 8601)
+    //
+    // Collection: notifications
+    // Document ID: auto-generated
+    // Fields:
+    //   - title: string (required)
+    //   - message: string (required)
+    //   - type: string (required, 'emergency', 'nearby', 'system')
+    //   - time: string (required)
+    //   - read: boolean (required)
+    //   - userId: string (required) - UID of the recipient
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "muhammadmohiuddin151@gmail.com" && request.auth.token.email_verified == true) ||
+         (request.auth.token.email == "01724737949@lifedrop.com"));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      // Allow authenticated users to see donor list
+      // Note: This exposes mobile numbers to all logged-in users.
+      // In a production app, you might want to hide mobile until a request is accepted.
+      allow read: if isAuthenticated();
+      
+      allow create: if isAuthenticated() && 
+        isOwner(userId) &&
+        hasOnlyAllowedFields(['uid', 'name', 'mobile', 'dob', 'bloodGroup', 'district', 'upazila', 'role', 'status', 'totalDonations', 'lastDonationDate', 'badge', 'createdAt', 'id', 'donationHistory', 'favorites', 'heroMode', 'moodStatus', 'livesSaved']) &&
+        (request.resource.data.role == 'user' || request.auth.token.email == "01724737949@lifedrop.com");
+        
+      allow update: if isAuthenticated() && 
+        (isOwner(userId) || isAdmin()) &&
+        hasOnlyAllowedFields(['uid', 'name', 'mobile', 'dob', 'bloodGroup', 'district', 'upazila', 'role', 'status', 'totalDonations', 'lastDonationDate', 'badge', 'createdAt', 'id', 'donationHistory', 'favorites', 'heroMode', 'moodStatus', 'livesSaved']) &&
+        (isAdmin() || request.resource.data.role == resource.data.role);
+    }
+
+    match /requests/{requestId} {
+      allow read: if isAuthenticated();
+      
+      allow create: if isAuthenticated() && 
+        request.resource.data.requesterId == request.auth.uid &&
+        hasOnlyAllowedFields(['patientName', 'bloodGroup', 'units', 'hospital', 'district', 'upazila', 'phone', 'time', 'reason', 'status', 'requesterId', 'createdAt']);
+        
+      allow update: if isAuthenticated() && 
+        (request.resource.data.requesterId == request.auth.uid || isAdmin()) &&
+        hasOnlyAllowedFields(['patientName', 'bloodGroup', 'units', 'hospital', 'district', 'upazila', 'phone', 'time', 'reason', 'status', 'requesterId', 'createdAt']);
+        
+      allow delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.userId || resource.data.userId == 'all');
+      
+      allow create: if isAuthenticated(); // Allow system or other users to notify
+      
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.userId && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+        
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+  }
+}
